@@ -1,0 +1,280 @@
+//Covid-19 Supply Smart Contract
+
+pragma solidity ^0.8.2;
+contract Orderflow { uint public _p_id =0; uint public _u_id =0; bool public delivered=true;
+
+struct product {
+uint HospitalID;
+uint workshop_ID;
+uint Designer_ID;
+uint Price;
+bool hospitalApprovePrice;
+bool hospital_Accept_Design;
+bool AuthorityApproveDesign;
+bool approve;
+string product_specs;
+string IPFS_Hash; 
+string manufacturingRec_Hash;
+bool ConfirmsRegistration;
+}
+
+mapping(uint => product) public products;
+struct participant { string _userName; string _passWord; string _userType;
+}
+
+mapping(uint => participant) public participants;
+//set of events
+event SmartContractIsCreatedAndNewOrderIsStarted(uint HospitalID, uint product_id);
+event HospitalAskingForDesignOffer(uint HospitalID,uint product_id);
+event Product_details_are_available(string product_specs, uint product_id);
+event Asking_for_design_approval(uint Designer_ID,string IPFS_Hash);
+event DesignApprovedByAuthority(uint product_id,bool decission1);
+event DesignOfferAcceptedAskingForDigitalManufacturingOffers(uint product_id,uint Designer_ID,uint own_id,bool decission2);
+event DesignOnVirtualInventoryAskingForDigitalManufacturingOffers(uint product_id,uint Designer_ID,uint own_id);
+event Asking_for_manufacturing_offer_acceptance(uint workshop_ID,uint product_id, uint Price);
+event Initiating_digital_manufacturing_and_activating_IoT_devices_and_cameras(uint workshopID,bool hospitalApprovePrice,uint product_ID, uint own_id);
+event WorkshopIsAskingForFinalProductApproval(uint product_ID,string manufacturingRec_Hash);
+event FinalProductIsApprovedProceedToDeliver(uint productID);
+event FinalProductRejected(uint product_ID);
+event AskingForRegistration(uint product_id);
+event RegistrationIsCompletedAndOrderISClosed(uint product_id);
+event OrderIsClosed(uint product_id);
+event HospitalRejectsManufacturingOffer();
+event ProductNotReceivedOrMalfunctioning();
+
+    function createParticipant(string memory name ,string memory pass ,string memory utype) public returns (uint){
+        uint user_id = _u_id++;
+        participants[user_id]._userName = name ;
+        participants[user_id]._passWord = pass;
+        participants[user_id]._userType = utype;
+        
+        return user_id;
+    }
+
+
+//MOH create a smart contract to register and govern a hospital or medical clinic demand and sypply during the crisis and start a new order
+function Ministry_of_Health_creates_smart_contract(uint own_id ,uint HospitalID ) public {if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("MOH")){
+    uint product_id=_p_id++;
+    emit SmartContractIsCreatedAndNewOrderIsStarted(HospitalID, product_id);}
+}
+
+function Hospital_asks_for_design_offer(uint own_id  ,uint product_id) public {if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("Hospital")){
+    products[product_id].HospitalID=own_id;
+    emit HospitalAskingForDesignOffer(own_id, product_id);}
+}
+
+//Research institutes provides IPFS hash for details of material and technology required to (product details)
+
+function RIProvidesIPFSHAshForDetails(uint product_id,uint own_id, string memory p_specs) public {
+    if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("RI"))
+{
+    products[product_id].product_specs = p_specs;
+    emit Product_details_are_available(p_specs,product_id);
+} }
+
+//Designer provide price offer
+function Designer_bids_to_design_and_asks_for_approval(uint own_id,uint product_id,string memory IPFS_Hash) public { if(keccak256(abi.encodePacked(participants[own_id]._userType)) ==
+keccak256("Designer")){ 
+products[product_id].Designer_ID = own_id;
+products[product_id].IPFS_Hash = IPFS_Hash;
+emit Asking_for_design_approval(own_id,IPFS_Hash);
+} }
+
+//Authority approve design
+function AuthorityApproveDesign(uint own_id, uint product_id, bool decission1) public{ if(keccak256(abi.encodePacked(participants[own_id]._userType)) ==
+keccak256("CertificationAuthority")) { products[product_id].AuthorityApproveDesign = decission1; if(decission1)
+emit DesignApprovedByAuthority(product_id, decission1);
+} }
+
+//Hospital asks for digital manufacturing offers
+function hospitalAcceptPriceOffer(uint Designer_ID,uint own_id, uint product_id, bool decission2 ) public {
+    if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("Hospital")){
+        products[product_id].hospital_Accept_Design = decission2; if (decission2)
+        {if(keccak256(abi.encodePacked(participants[Designer_ID]._userType)) == keccak256("Virtual_Inventory")) {
+            emit DesignOnVirtualInventoryAskingForDigitalManufacturingOffers(product_id, Designer_ID, own_id);}
+        else {
+            emit DesignOfferAcceptedAskingForDigitalManufacturingOffers(product_id, Designer_ID, own_id, decission2 );
+} }}}
+
+//Digital manufacturing workshop offer printing
+function workshop_bids_to_manufacture_and_asks_for_approval  (uint own_id, uint product_id, uint price ) public { if(keccak256(abi.encodePacked(participants[own_id]._userType)) ==
+keccak256("Workshop")) { 
+products[product_id].workshop_ID = own_id;
+products[product_id].Price = price;
+emit Asking_for_manufacturing_offer_acceptance(own_id, product_id,price);
+
+}}
+
+//hospital Approves workshop to manufacture the product
+function AssignWorkshop(uint own_id, uint workshopID, uint product_ID, bool hospitalApprovePrice) public { if(keccak256(abi.encodePacked(participants[own_id]._userType)) ==
+keccak256("Hospital")) {
+products[product_ID].workshop_ID = workshopID; 
+products[product_ID].hospitalApprovePrice == hospitalApprovePrice;
+if(hospitalApprovePrice){
+emit Initiating_digital_manufacturing_and_activating_IoT_devices_and_cameras(workshopID,hospitalApprovePrice,product_ID,own_id);}
+else {
+emit HospitalRejectsManufacturingOffer();}
+}
+} 
+
+//Asking For Final Product Approval
+function Workshop_asking_for_final_product_approval(uint own_id, uint product_ID, string memory manufacturingRec_Hash) public {
+if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("Workshop")) {
+products[product_ID].manufacturingRec_Hash = manufacturingRec_Hash;
+emit WorkshopIsAskingForFinalProductApproval( product_ID, manufacturingRec_Hash);
+} }
+
+//certification authority Approve the Final Product
+function AuthorityApproveFinalProduct(uint own_id, uint product_ID, bool approve) public{
+    if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("CertificationAuthority")){
+    products[product_ID].approve = approve;
+    if(approve){
+        emit FinalProductIsApprovedProceedToDeliver(product_ID);
+        } else {
+        emit FinalProductRejected(product_ID); 
+    }}
+}
+
+
+//hospital confirms delivery and successful operation
+
+function Hospital_confirms_delivery_and_successful_operation (uint own_id,uint Designer_ID, uint product_id, bool delivered) public{
+    if(keccak256(abi.encodePacked(products[product_id].HospitalID)) == keccak256(abi.encodePacked(own_id)))
+    { 
+        delivered == delivered;
+        if(delivered)
+        {
+            if(keccak256(abi.encodePacked(participants[Designer_ID]._userType)) == keccak256("Virtual_Inventory")) 
+            {emit OrderIsClosed(product_id);}
+            else {emit AskingForRegistration(product_id);}
+            
+        }
+        else{emit ProductNotReceivedOrMalfunctioning();}}}
+
+
+function MOHConfirmsRegistration(uint own_id, uint product_id, bool ConfirmsRegistration)public{
+    if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("MOH")){
+    products[product_id].ConfirmsRegistration = ConfirmsRegistration;
+    if(ConfirmsRegistration){
+        emit RegistrationIsCompletedAndOrderISClosed(product_id);
+        }
+     else {emit RegistrationAndVIUpdateNotConfirmed(product_id);
+} }
+}
+
+
+function getParticipant(uint p_id) public returns (string memory,string memory) { return (participants[p_id]._userName,participants[p_id]._userType);
+}
+
+function getProduct_details(uint prod_id) public returns (string memory) {
+return (products[prod_id].product_specs); }
+
+
+function userLogin(uint uid ,string memory uname ,string memory pass ,string memory utype) public returns (bool){
+if(keccak256(abi.encodePacked(participants[uid]._userType)) == keccak256(abi.encodePacked(utype))) {
+if(keccak256(abi.encodePacked(participants[uid]._userName)) == keccak256(abi.encodePacked(uname))) {
+//if(keccak256(abi.encodePacked(participants[uid]._passWord))==keccak256(abi.encodePack ed(pass))) {
+return (true); }
+}
+
+}
+}
+//Registration Smart Contract
+
+pragma solidity ^0.8.2;
+contract Registration { uint public _u_id =0;
+
+struct product {
+uint Hospital_ID;
+uint HospitallicenseNo;
+uint workshop_ID;
+uint WorkshoplicenseNo;
+uint Designer_ID;
+uint DesignerlicenseNo;
+bool MOH_Confirm_Registration;
+string DEsignIPFS_Hash; 
+uint DesignApprovalNo;
+string manufacturingRec_Hash;
+uint FinalProductApprovalNo;
+string VIAddress;
+}
+
+mapping(uint => product) public products;
+struct participant { string _userName; string _passWord; string _userType;
+}
+
+mapping(uint => participant) public participants;
+//set of events
+event RegistrationSmartContractIsCreatedAndNewOrderIsStarted(uint product_id);
+event MOHAskingForFDALicenceandApprovalsNumbers(uint product_id, uint Hospital_ID,uint Designer_ID,uint workshop_ID,string  DEsignIPFS_Hash,string manufacturingRec_Hash);
+event FDAProvidedLicenceandApprovalsNumbers(uint product_id,uint DesignApprovalNo,uint FinalProductApprovalNo,uint WorkshoplicenseNo,uint DesignerlicenseNo,uint HospitallicenseNo);
+event MOHConfirmsRegistrationAndAdditionToVirtualInventory(uint product_id, bool MOH_Confirm_Registration,string VIAddress);
+event RegistrationAndVIUpdateNotConfirmed(uint product_id);
+
+
+    function createParticipant(string memory name ,string memory pass ,string memory utype) public returns (uint){
+        uint user_id = _u_id++;
+        participants[user_id]._userName = name ;
+        participants[user_id]._passWord = pass;
+        participants[user_id]._userType = utype;
+        
+        return user_id;
+    }
+
+
+//MOH create a smart contract to register a hospital or medical clinic successful sypply during the crisis
+function Ministry_of_Health_creates_reg_smart_contract_and_add_order(uint own_id, uint product_id ) public {if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("MOH")){
+    uint product_id= product_id;
+    emit RegistrationSmartContractIsCreatedAndNewOrderIsStarted(product_id);}
+}
+
+function MOH_asks_for_FDA_LicenceandApprovals_numbers(uint own_id ,uint product_id, uint Hospital_ID, uint Designer_ID, uint workshop_ID , string memory DEsignIPFS_Hash, string memory manufacturingRec_Hash) public
+{if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("MOH")){
+    products[product_id].Hospital_ID = Hospital_ID;
+    products[product_id].Designer_ID = Designer_ID;
+    products[product_id].workshop_ID = workshop_ID;
+    products[product_id].DEsignIPFS_Hash = DEsignIPFS_Hash;
+    products[product_id].manufacturingRec_Hash = manufacturingRec_Hash;
+    emit MOHAskingForFDALicenceandApprovalsNumbers(product_id, Hospital_ID,Designer_ID,workshop_ID, DEsignIPFS_Hash, manufacturingRec_Hash );}
+}
+
+
+
+function FDA_Provides_LicencesandApprovals_numbers(uint own_id ,uint product_id, uint HospitallicenseNo, uint DesignerlicenseNo, uint WorkshoplicenseNo , uint DesignApprovalNo, uint FinalProductApprovalNo) public 
+{if(keccak256(abi.encodePacked(participants[own_id]._userType)) == keccak256("Authority")){
+    products[product_id].HospitallicenseNo = HospitallicenseNo;
+    products[product_id].DesignerlicenseNo = DesignerlicenseNo;
+    products[product_id].WorkshoplicenseNo = WorkshoplicenseNo;
+    products[product_id].DesignApprovalNo = DesignApprovalNo;
+    products[product_id].FinalProductApprovalNo = FinalProductApprovalNo;
+    emit FDAProvidedLicenceandApprovalsNumbers(product_id,DesignApprovalNo,FinalProductApprovalNo,WorkshoplicenseNo,DesignerlicenseNo,HospitallicenseNo);}
+}
+
+
+//MOH Confirm Registration Completion
+function MOHConfirmsRegistration(uint own_id, uint product_id, string memory VIAddress, bool MOH_Confirm_Registration) public{ if(keccak256(abi.encodePacked(participants[own_id]._userType)) ==
+keccak256("MOH")) { products[product_id].VIAddress = VIAddress;
+products[product_id].MOH_Confirm_Registration == MOH_Confirm_Registration;
+if(MOH_Confirm_Registration)
+emit MOHConfirmsRegistrationAndAdditionToVirtualInventory(product_id, MOH_Confirm_Registration,VIAddress);
+else{ emit RegistrationAndVIUpdateNotConfirmed(product_id);
+} }}
+
+
+
+function getParticipant(uint p_id) public returns (string memory,string memory) { return (participants[p_id]._userName,participants[p_id]._userType);
+}
+
+
+
+function userLogin(uint uid ,string memory uname ,string memory pass ,string memory utype) public returns (bool){
+if(keccak256(abi.encodePacked(participants[uid]._userType)) == keccak256(abi.encodePacked(utype))) {
+if(keccak256(abi.encodePacked(participants[uid]._userName)) == keccak256(abi.encodePacked(uname))) {
+//if(keccak256(abi.encodePacked(participants[uid]._passWord))==keccak256(abi.encodePack ed(pass))) {
+return (true); }
+}
+
+}
+}
+
+  
